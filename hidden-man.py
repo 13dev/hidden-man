@@ -159,6 +159,7 @@ def processVPNChoice(choice):
 
 	#start
 	os.system("nohup openvpn --cd ~/openvpn --config " + zipFile + " --auth-user-pass ./authfile > ~/openvpn/" + logFile + " 2>&1 &")
+	print c.out("%s[*]%s Always check log file in: ~/openvpn/%s." %(c.YELLOW, c.RESET, logFile))
 
 	checkOpenVPN()
 
@@ -237,7 +238,7 @@ def hideIP(hide):
 	print("\n")
 
 	try:
-		destination = raw_input(c.BLUE + c.BOLD +'Choice >' + c.RESET).lower()
+		destination = raw_input(c.BLUE + c.BOLD +'Choice >' + c.RESET).lower().strip()
 		processVPNChoice(destination)
 	except KeyboardInterrupt:
 		sys.exit(c.RED + c.BOLD + "\nChoice cancelled...")
