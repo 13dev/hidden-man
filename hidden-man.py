@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import sys, os
+import sys, os, ipgetter, requests, subprocess
 from os.path import expanduser
 from time import sleep
 import random, argparse, threading, commands
@@ -39,21 +39,55 @@ if not os.geteuid() == 0:
 
 c = Color()
 logFile = "hiddenman.log"
-version = "v1.1"
+version = "v1.2"
 
-def check(command, commandToVerify, errorMessage = "", successMessage = ""):
-	process = Popen(command, shell=True)
-	while True:
-		if process.poll() is not None:
-			(_, outputCommand) = commands.getstatusoutput(commandToVerify)
-			if(not outputCommand):
-				#Error init the command
-				if(errorMessage):	print errorMessage
-				sys.exit()
-			else:
-				#success init command
-				if(successMessage):	print successMessage
-			break
+def get_resolvers():
+	resolvers = []
+	try:
+		with open( '/etc/resolv.conf', 'r' ) as resolvconf:
+			for line in resolvconf.readlines():
+				line = line.split( '#', 1 )[ 0 ];
+				line = line.rstrip();
+				if 'nameserver' in line:
+					resolvers.append( line.split()[ 1 ] )
+		return resolvers
+	except IOError as error:
+		return error.strerror
+
+def ipInfo():
+	sleep(2)
+	IP 	= ipgetter.myip()
+	url = 'http://freegeoip.net/json/' + IP
+	r 	= requests.get(url)
+	js 	= r.json()
+	resolvers = get_resolvers()
+
+	if(js):
+		print c.out('%s[+] %sGetting information...'%(c.YELLOW, c.RESET))
+		sleep(8)
+		print ""
+		if(js['ip']):			print c.out('%s[*] %sIP Adress: 		%s'%(c.GREEN, c.RESET, js['ip']))
+		if(js['country_code']):	print c.out('%s[*] %sCountry Code: 	%s'%(c.GREEN, c.RESET, js['country_code']))
+		if(js['country_name']):	print c.out('%s[*] %sCountry Name: 	%s'%(c.GREEN, c.RESET, js['country_name']))
+		if(js['region_code']):	print c.out('%s[*] %sRegion Code: 	%s'%(c.GREEN, c.RESET, js['region_code']))
+		if(js['region_name']):	print c.out('%s[*] %sRegion Name: 	%s'%(c.GREEN, c.RESET, js['region_name']))
+		if(js['city']):			print c.out('%s[*] %sCity Name: 		%s'%(c.GREEN, c.RESET, js['city']))
+		if(js['zip_code']):		print c.out('%s[*] %sZip code: 		%s'%(c.GREEN, c.RESET, js['zip_code']))
+		if(js['time_zone']):	print c.out('%s[*] %sTime Zone: 		%s'%(c.GREEN, c.RESET, js['time_zone']))
+		if(js['latitude']):		print c.out('%s[*] %sLatitude: 		%s'%(c.BLUE, c.RESET, str(js['latitude'])))
+		if(js['longitude']):	print c.out('%s[*] %sLongitude: 		%s'%(c.BLUE, c.RESET, str(js['longitude'])))
+
+	if(resolvers):
+		print ""
+		print c.out('%s[*] %sGetting resolvers...'%(c.YELLOW, c.RESET))
+		sleep(2)
+		for key, resolv in enumerate(resolvers):
+			print c.out('%s	[%s]%s %s' %(c.BLUE, str(key + 1), c.RESET, resolv))
+
+			#192.168.1.1
+			if(resolv == '192.168.1.1'):
+				print c.out('%s[%s]%s WARNING: You have default dns-nameserver!' %(c.RED, str(key + 1), c.ON_YELLOW))
+				print c.out('%s[%s]%s Add: dns-nameserver 8.8.8.8, 8.8.4.4 to /etc/network/interfaces' %(c.RED, str(key + 1), c.ON_YELLOW))
 
 def stopAll():
 	os.system("ps -uax | grep log- | awk '{print $2}' | xargs kill -9 2> /dev/null")
@@ -131,7 +165,6 @@ def processVPNChoice(choice):
 	#start vpn
 	sleep(2)
 	print c.out("%s[+] %sConnecting to %s server." %(c.GREEN, c.RESET + c.ON_CYAN, nameChoice))
-	sleep(1)
 
 	#add configure the ovpn file...
 	#os.system("sed -i '/auth-user-pass/d' ~/openvpn/" + zipFile)
@@ -143,10 +176,24 @@ def processVPNChoice(choice):
 	#start
 	#os.system("nohup openvpn --cd ~/openvpn --config " + zipFile + " --auth-user-pass ./authfile > ~/openvpn/" + logFile + " 2>&1 &")
 	#print c.out("%s[*]%s Always check log file in: ~/openvpn/%s." %(c.YELLOW, c.RESET, logFile))
-	check(["nohup openvpn --cd %s --config %s --auth-user-pass %s > %s 2>&1 &" %('~/openvpn', zipFile,'./authfile', '~/openvpn/' + logFile)], 
-		'pidof -x openvpn',
-		c.out("%s[-] %sError connecting VPN check ~/openvpn/%s." %(c.RED, c.RESET, logFile)),
-		c.out("%s[+] %sConnected to %s VPN." %(c.GREEN, c.RESET + c.ON_GREEN, nameChoice)))
+	sleep(3)
+	fileToSaveLog = open(expanduser("~") + '/openvpn/' + logFile, "w")
+
+	vpn = subprocess.Popen(["openvpn --cd %s --config %s --auth-user-pass %s &" %('~/openvpn', zipFile,'./authfile')], shell=True, stdout=PIPE, stderr=fileToSaveLog)
+	sleep(8)
+	vpn.wait()
+
+	(_, outputCommand) = commands.getstatusoutput('pidof -x openvpn')
+
+	if(not outputCommand):
+		print c.out("%s[-] %sError connecting VPN check ~/openvpn/%s." %(c.RED, c.RESET, logFile))
+	else:
+		print c.out("%s[+] %sConnected to %s VPN." %(c.GREEN, c.RESET + c.ON_GREEN, nameChoice))
+
+	if(vpn):
+		ipInfo()
+	else:
+		sys.exit()
 
 def getRandomMac():
 	'''Returns a random MAC''' 
@@ -196,7 +243,7 @@ def defaultMacAddress(hide):
 def hideIP(hide):
 	if (not hide): return
 
-	if(not os.path.exists("~/openvpn")):
+	if(not os.path.exists(expanduser("~") + "/openvpn")):
 		print c.out("%s[+]%s Creating working directory..." %(c.GREEN, c.RESET))
 		os.system("mkdir ~/openvpn")
 		os.system("chmod 777 ~/openvpn")
