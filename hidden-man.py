@@ -39,7 +39,7 @@ if not os.geteuid() == 0:
 
 c = Color()
 logFile = "hiddenman.log"
-version = "v1.2"
+version = "v1.3"
 
 def get_resolvers():
 	resolvers = []
@@ -86,8 +86,8 @@ def ipInfo():
 
 			#192.168.1.1
 			if(resolv == '192.168.1.1'):
-				print c.out('%s[%s]%s WARNING: You have default dns-nameserver!' %(c.RED, str(key + 1), c.ON_YELLOW))
-				print c.out('%s[%s]%s Add: dns-nameserver 8.8.8.8, 8.8.4.4 to /etc/network/interfaces' %(c.RED, str(key + 1), c.ON_YELLOW))
+				print c.out('%s[%s]	%sWARNING: You have default dns-nameserver!' %(c.RED, str(key + 1), c.ON_YELLOW))
+				print c.out('%s[%s]	%sAdd: dns-nameserver 8.8.8.8, 8.8.4.4 to /etc/network/interfaces' %(c.RED, str(key + 1), c.ON_YELLOW))
 
 def is_connected():
 	print c.out('%s[*]%s Checking your Internet connection...' %(c.YELLOW, c.RESET))
