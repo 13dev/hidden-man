@@ -12,6 +12,8 @@ Hidden-Man - Hide your entity, Hidden-Man.
 * Connect VPN.
 * Choose Location.
 * Automatic download required files.
+* Get internet information.
+* Get dns-nameserver info.
 * ( I will add more in the future )
 
 <a href="https://stackexchange.com/users/6815356" >
