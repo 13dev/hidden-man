@@ -94,8 +94,8 @@ def is_connected():
 	sleep(2)
 	try:
 		host = socket.gethostbyname("www.google.com")
-		s = socket.create_connection((host, 80), 2)
-
+		
+		s = socket.create_connection((host, 80), timeout=10)
 		print c.out('%s[+]%s Connection established successfully!' %(c.GREEN, c.RESET))
 		return True
 	except:
@@ -104,9 +104,16 @@ def is_connected():
 	return False
 
 def stopAll():
+	os.system("killall openvpn 2> /dev/null")
 	os.system("ps -uax | grep log- | awk '{print $2}' | xargs kill -9 2> /dev/null")
 	os.system("ps -aux | grep openvpn | awk '{print $2}' | xargs kill -9 2> /dev/null")
 	os.system("ifconfig $(ifconfig | egrep -io 'tun\w') down 2> /dev/null")
+	
+	#restart interface
+	sleep(1)
+	eth = Popen("route | grep '^default' | grep -o '[^ ]*$'", shell=True, stdout=PIPE).communicate()[0].strip()
+	os.system("ifconfig " + eth + " down")
+	os.system("ifconfig " + eth + " up")
 
 def checkProccess():
 	(_, outputPidof) = commands.getstatusoutput("pidof -x openvpn")
@@ -218,9 +225,7 @@ def getRandomMac():
 		MAC += ''.join(random.choice(chars)  for n in xrange(2)) + ':'
 	return MAC[:-1].strip()
 
-def hideMacAddress(hide):
-	if (not hide): 
-		return
+def hideMacAddress():
 	# wich interface to change mac
 	eth = Popen("route | grep '^default' | grep -o '[^ ]*$'",shell=True, stdout=PIPE).communicate()[0].strip()
 	
@@ -236,9 +241,8 @@ def hideMacAddress(hide):
 		sleep(3)
 	print c.out("%s[+] %sMAC-Address Changed successfully(%s)." %(c.GREEN, c.RESET + c.ON_GREEN, mac))
 
-def defaultMacAddress(hide):
-	if (not hide): 
-		return
+def defaultMacAddress():
+
 	# wich interface to change mac
 	eth = Popen("route | grep '^default' | grep -o '[^ ]*$'",shell=True, stdout=PIPE).communicate()[0].strip()
 	# get the perm mac
@@ -254,8 +258,7 @@ def defaultMacAddress(hide):
 		sleep(3)
 	print c.out("%s[+] %sMAC-Address Changed to original(%s)." %(c.GREEN, c.RESET + c.ON_GREEN, mac))
 
-def hideIP(hide):
-	if (not hide): return
+def hideIP():
 
 	if(not os.path.exists(expanduser("~") + "/openvpn")):
 		print c.out("%s[+]%s Creating working directory..." %(c.GREEN, c.RESET))
@@ -293,7 +296,10 @@ parser = argparse.ArgumentParser(description='Hide your entity, Hidden-Man.')
 parser.add_argument('--hidemac', help = 'Hide you MAC-Address.',required=False, action='store_true',default=False)
 parser.add_argument('--restoremac', help = 'Set to default MAC-Address.',required=False, action='store_true',default=False)
 parser.add_argument('--hideip', help = 'Hide you IP-Address using VPN.',required=False, action='store_true',default=False)
+parser.add_argument('--restoreip', help = 'Stop VPN.',required=False, action='store_true',default=False)
 parser.add_argument('--forcestop', help = 'Force to stop all process.',required=False, action='store_true',default=False)
+parser.add_argument('--checkinternet', help = 'Check if you are connected to the internet.',required=False, action='store_true',default=False)
+parser.add_argument('--getinfo', help = 'Get information about your connection.',required=False, action='store_true',default=False)
 
 args = parser.parse_args()
 
@@ -317,16 +323,37 @@ sleep(.5)
 if(args.forcestop):
 	stopAll()
 	print c.out("%s[-]%s All process were closed." %(c.GREEN, c.RESET))
-
-checkProccess()
-
-hideMacAddress(args.hidemac)
-defaultMacAddress(args.restoremac)
-
-if(not is_connected()):
 	sys.exit()
-	
-hideIP(args.hideip)
+
+if(args.restoreip):
+	stopAll()
+	print c.out("%s[-]%s VPN was closed." %(c.GREEN, c.RESET))
+
+if(args.checkinternet):
+	is_connected()
+	sys.exit()
+
+if(args.hidemac):
+	hideMacAddress()
+	sys.exit()
+
+if(args.restoremac):	
+	defaultMacAddress()
+	sys.exit()
+
+if(args.hideip):
+	if(not is_connected()):
+		sys.exit()
+
+	checkProccess()
+	hideIP()
+
+if(args.getinfo):
+	if(not is_connected()):
+		sys.exit()
+	ipInfo()
+
+
 
 
 
