@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import sys, os, ipgetter, requests, subprocess
+import sys, os, ipgetter, requests, subprocess, socket
 from os.path import expanduser
 from time import sleep
 import random, argparse, threading, commands
@@ -88,6 +88,20 @@ def ipInfo():
 			if(resolv == '192.168.1.1'):
 				print c.out('%s[%s]%s WARNING: You have default dns-nameserver!' %(c.RED, str(key + 1), c.ON_YELLOW))
 				print c.out('%s[%s]%s Add: dns-nameserver 8.8.8.8, 8.8.4.4 to /etc/network/interfaces' %(c.RED, str(key + 1), c.ON_YELLOW))
+
+def is_connected():
+	print c.out('%s[*]%s Checking your Internet connection...' %(c.YELLOW, c.RESET))
+	sleep(2)
+	try:
+		host = socket.gethostbyname("www.google.com")
+		s = socket.create_connection((host, 80), 2)
+
+		print c.out('%s[+]%s Connection established successfully!' %(c.GREEN, c.RESET))
+		return True
+	except:
+		pass
+	print c.out('%s[-]%s Please check your Internet connection!' %(c.RED, c.RESET + c.ON_YELLOW))
+	return False
 
 def stopAll():
 	os.system("ps -uax | grep log- | awk '{print $2}' | xargs kill -9 2> /dev/null")
@@ -307,8 +321,13 @@ if(args.forcestop):
 checkProccess()
 
 hideMacAddress(args.hidemac)
-hideIP(args.hideip)
 defaultMacAddress(args.restoremac)
+
+if(not is_connected()):
+	sys.exit()
+	
+hideIP(args.hideip)
+
 
 
 
